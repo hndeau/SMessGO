@@ -39,28 +39,9 @@ function signIn() {
         },
         onFailure: function (err) {
             console.log(err);
+            document.getElementById('error').innerHTML = err.message;
         },
     });
-}
-
-function signOut() {
-    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-    var userData = {
-        Username: authenticationData.Username,
-        Pool: userPool,
-    };
-    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-    // Get the current user from local storage, if available
-    const currentUser = cognitoIdentityServiceProvider.getCurrentUser();
-
-    if (currentUser !== null) {
-        // If the current user is loaded in memory, sign them out
-        currentUser.signOut(() => {
-            console.log('User signed out successfully');
-        });
-    } else {
-        console.log('No user is currently loaded in memory');
-    }
 }
 
 function signUp() {
@@ -84,18 +65,13 @@ function signUp() {
     userPool.signUp(username, password, attributeList, null, (err, result) => {
         if (err) {
             console.log(err);
+            document.getElementById('error').innerHTML = err.message;
             return;
         }
         cognitoUser = result.user;
         console.log('User signed up:', cognitoUser.getUsername());
+        // Redirect to /login
+        window.location.href = "/login";
     });
-}
 
-// Helper function
-function getCookie(name) {
-    const value = "; " + document.cookie;
-    const parts = value.split("; " + name + "=");
-    if (parts.length === 2) {
-        return parts.pop().split(";").shift();
-    }
 }

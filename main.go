@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func serveStaticFile(currentDir string) http.Handler {
@@ -50,13 +53,31 @@ func main() {
 	})
 
 	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(currentDir, "html/chat.html")) // Assuming the HTML file is named "index.html"
+		// Parse the URL parameters
+		params := r.URL.Query()
+		username := params.Get("user")
+		// Load the HTML file
+		htmlFile := filepath.Join(currentDir, "html/chat.html")
+		htmlData, err := ioutil.ReadFile(htmlFile)
+		if err != nil {
+			http.Error(w, "Error reading HTML file", http.StatusInternalServerError)
+			return
+		}
+
+		// Replace the username placeholder with the provided value (if any)
+		if username != "" {
+			htmlString := string(htmlData)
+			htmlString = strings.Replace(htmlString, "John", fmt.Sprintf("%s", username), 1)
+			htmlData = []byte(htmlString)
+		}
+
+		// Serve the modified HTML file
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(htmlData)
 	})
 
-	// Add the /cognito handler
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		cognitoURL := "https://smessauth.auth.us-east-1.amazoncognito.com/signup?client_id=34mgjfocrlfp3c4ij35qoe8d4b&response_type=token&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%2Fcallback"
-		http.Redirect(w, r, cognitoURL, http.StatusFound)
+		http.ServeFile(w, r, filepath.Join(currentDir, "html/signup.html")) // Assuming the HTML file is named "index.html"
 	})
 
 	http.ListenAndServe("80", nil)

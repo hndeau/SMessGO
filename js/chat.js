@@ -26,6 +26,7 @@ getCurrentUser()
         userData.Username = username;
         console.log('Username:', username);
         (async () => {
+            let response_messages;
             try {
                 const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
                 response_messages = sortMessagesByTimestamp(await getMessages(users[0] + '-' + users[1]));
@@ -35,12 +36,46 @@ getCurrentUser()
                 console.error('Error:', error.message);
             }
         })();
+        (async () => {
+            let response;
+            try {
+                response = decodeConversations(await getConversations());
+                displayConversations(response);
+                console.log(response);
+            } catch (error) {
+                console.error('Error:', error.message);
+            }
+        })();
     })
     .catch(error => {
         console.error('Error getting user:', error);
     });
 
-function displayMessages(messages, currentUsername) {
+async function getMessagesHelper() {
+    let response_messages;
+    try {
+        const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
+        response_messages = sortMessagesByTimestamp(await getMessages(users[0] + '-' + users[1]));
+        displayMessages(response_messages);
+        console.log(response_messages);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+function decodeMessage(inputString) {
+    const splitIndex = inputString.lastIndexOf('_');
+    if (splitIndex === -1) {
+        throw new Error('Invalid input format');
+    }
+
+    const message = inputString.slice(0, splitIndex);
+    const username = inputString.slice(splitIndex + 1);
+
+    return [message, username];
+}
+
+function displayMessages(messages) {
     const messagesDiv = document.getElementById('messages');
     messagesDiv.innerHTML = ''; // Clear the existing messages
 
@@ -58,25 +93,26 @@ function displayMessages(messages, currentUsername) {
             second: 'numeric',
         });
 
-        const dateString = dateFormatter.format(date);
-        timestampDiv.textContent = dateString;
+        timestampDiv.textContent = dateFormatter.format(date);
         timestampDiv.classList.add('timestamp');
         messageDiv.appendChild(timestampDiv);
 
+        const result = decodeMessage(message.message);
+        const text = result[0];
+        const user = result[1];
+
         const textDiv = document.createElement('div');
-        textDiv.textContent = message.message;
+        textDiv.textContent = text;
         textDiv.classList.add('text');
         messageDiv.appendChild(textDiv);
 
         // Add classes for chat bubble appearance and position
         messageDiv.classList.add('message');
-        messageDiv.classList.add('right');
-
-        // if (message.sender === currentUsername) {
-        //     messageDiv.classList.add('right');
-        // } else {
-        //     messageDiv.classList.add('left');
-        // }
+        if (user === UN) {
+            messageDiv.classList.add('user');
+        } else {
+            messageDiv.classList.add('people');
+        }
 
         messagesDiv.appendChild(messageDiv);
     });
@@ -94,6 +130,53 @@ function sortMessagesByTimestamp(messageString) {
     });
 
     return messagesArray;
+}
+
+function decodeConversations(response) {
+    try {
+        const parsedResponse = JSON.parse(response);
+        return parsedResponse.map(conversation => {
+            const messages = conversation.message.split('_');
+            const decodedMessages = messages.map(message => {
+                const [name, id] = message.split('-');
+                return {
+                    name: name,
+                    id: id
+                };
+            });
+
+            return {
+                messages: decodedMessages,
+                conversation_id: conversation.conversation_id,
+                timestamp: conversation.timestamp,
+            };
+        });
+    } catch (error) {
+        console.error('Failed to decode conversations:', error);
+        throw new Error('Failed to decode conversations');
+    }
+}
+
+function displayConversations(conversations) {
+    conversations[0].messages.forEach(message => {
+        let otherUser;
+        if (message.name === UN) {
+            otherUser = message.id;
+        } else {
+            otherUser = message.name;
+        }
+        if (otherUser) {
+            const listItem = document.createElement('li');
+            const div = document.createElement('div');
+            div.textContent = `${otherUser}`;
+            div.style.cursor = 'pointer';
+            div.onclick = () => {
+                window.location.href = `/chat?user=${otherUser}`;
+            };
+            listItem.appendChild(div);
+            document.getElementById('conversations').appendChild(listItem);
+        }
+    });
 }
 
 function getCookie(name) {
@@ -176,13 +259,7 @@ async function getCurrentUser() {
     });
 }
 
-async function getMessages(conversationId) {
-    if (!conversationId) {
-        throw new Error('Missing conversation_id');
-    }
-
-    const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/getMessages/' + conversationId;
-
+async function getFetch(url) {
     try {
         const response = await fetch(url, {
             method: 'GET',
@@ -204,22 +281,7 @@ async function getMessages(conversationId) {
     }
 }
 
-async function sendMessage(conversationId, message) {
-    if (!conversationId) {
-        throw new Error('Missing conversation_id');
-    }
-
-    if (!message) {
-        throw new Error('Missing conversation_id');
-    }
-
-    const payload = {
-        conversation_id: conversationId,
-        message: message
-    };
-
-    const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/sendMessage';
-
+async function postFetch(url) {
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -242,22 +304,57 @@ async function sendMessage(conversationId, message) {
     }
 }
 
-function signOut() {
-    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-    var userData = {
-        Username: UN,
-        Pool: userPool,
-    };
-    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-    // Get the current user from local storage, if available
-    const currentUser = cognitoIdentityServiceProvider.getCurrentUser();
-
-    if (currentUser !== null) {
-        // If the current user is loaded in memory, sign them out
-        currentUser.signOut(() => {
-            console.log('User signed out successfully');
-        });
-    } else {
-        console.log('No user is currently loaded in memory');
+async function getConversations() {
+    if (!UN) {
+        throw new Error('Missing UN!');
     }
+
+    const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/getCon/' + UN;
+    return await getFetch(url);
+}
+
+async function getMessages(conversationId) {
+    if (!conversationId) {
+        throw new Error('Missing conversation_id');
+    }
+
+    const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/getMessages/' + conversationId;
+
+    return await getFetch(url);
+}
+
+async function sendMessage(conversationId, message) {
+    if (!conversationId) {
+        throw new Error('Missing conversation_id');
+    }
+
+    if (!message) {
+        throw new Error('Missing message');
+    }
+
+    if (!UN) {
+        throw new Error('Missing username');
+    }
+
+    const payload = {
+        conversation_id: conversationId,
+        message: message,
+        username: UN
+    };
+
+    const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/sendMessage';
+
+    return await postFetch(url);
+}
+
+
+function signOut() {
+    // Delete user's cookies
+    document.cookie = "id_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+    // Redirect to homepage
+    window.location.href = "/";
+
 }

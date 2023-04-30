@@ -12,12 +12,12 @@
 <body>
 <div id="navbar">
     <h3 id="username">Navigation</h3>
-    <!-- Add your navigation links here -->
+    <div id="conversations"></div>
     <button type="button" onclick="signOut()">Sign Out</button>
 </div>
 <div id="chat">
-    <h4 id="recipient">John</h4>
-    <div id="messages"></div>
+    <h4 id="recipient" contentEditable="true">John</h4>
+    <div class="message-container" id="messages"></div>
     <div id="input-container">
         <form id="input-form">
             <input type="text" id="text-input" placeholder="✍️">
@@ -27,19 +27,33 @@
         </form>
     </div>
 </div>
+
 <script>
     // Call refreshTokenIfNeeded every 5 minutes
     setInterval(refreshTokenIfNeeded, 5 * 60 * 1000);
-    // Use the getMessages function
 
+    // Select the h4 element
+    const recipient = document.querySelector('#recipient');
+
+    // Listen for the blur event on the input element
+    recipient.addEventListener('blur', getMessagesHelper);
+    recipient.addEventListener('keydown', function(event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            getMessagesHelper();
+        }
+    });
 
     document.getElementById('input-form').addEventListener('submit', async function (event) {
-        event.preventDefault(); // prevent the form from submitting normally
-
-        const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
+        event.preventDefault(); // prevent the form from submitting and refreshing the page
+        const users = [document.getElementById('recipient').textContent, UN].sort();
         const message = document.getElementById('text-input').value;
         await sendMessage(users[0] + '-' + users[1], message);
-        document.getElementById('messages').textContent = await getMessages(users[0] + '-' + users[1]);
+        await getMessagesHelper();
+        const inputField = document.getElementById('text-input');
+        const inputValue = inputField.value;
+        // your code for processing the input value goes here
+        inputField.value = ''; // clear the text input field
     });
 </script>
 </body>
