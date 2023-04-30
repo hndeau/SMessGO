@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: SMess
+  name: smess
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: SMess
+      app: smess
   template:
     metadata:
       labels:
-        app: SMess
+        app: smess
     spec:
       containers:
-        - name: smess
+        - name: smess-container
           image: hndeau/smess:latest
           ports:
             - containerPort: 80
