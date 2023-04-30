@@ -1,3 +1,7 @@
+// Make sure the AmazonCognitoIdentity namespace is available
+if (typeof AmazonCognitoIdentity === 'undefined') {
+    console.error('AmazonCognitoIdentity is undefined. Make sure you have included the SDK.');
+}
 AWS.config.region = 'us-east-1'; // Replace with the region you are using
 AWS.config.credentials = new AWS.CognitoIdentityCredentials({
     IdentityPoolId: 'us-east-1:175761ac-5e82-41e0-91ab-0d952714f634', // Replace with your Identity Pool ID
@@ -86,85 +90,6 @@ function signUp() {
         console.log('User signed up:', cognitoUser.getUsername());
     });
 }
-
-function getCurrentUser() {
-    // Get the access token from cookies
-    const accessToken = getCookie('access_token');
-
-    // Set up the parameters for the getUser API call
-    const params = {
-        AccessToken: accessToken
-    };
-
-    // Create a new CognitoIdentityServiceProvider object
-    const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider();
-
-    // Call the getUser API with the session token
-    cognitoIdentityServiceProvider.getUser(params, (err, result) => {
-        if (err) {
-            console.log(err);
-            return;
-        }
-
-        // Get a reference to the output element
-        const outputElement = document.getElementById("username");
-
-        // Set the output element's text to the username
-        outputElement.textContent = result.Username;
-    });
-}
-
-async function sendMessage(conversationId, message) {
-    const proxyEndpoint = '/forward'; // Replace with the actual URL where your Go proxy is running
-    const payload = {
-        conversation_id: conversationId,
-        message: message
-    };
-
-    try {
-        const response = await fetch(proxyEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'id_token': getCookie("id_token")
-            },
-            body: JSON.stringify(payload)
-        });
-        result = await response;
-        console.log(result)
-        return result;
-    } catch (error) {
-        console.error('Error calling Go intermediary:', error);
-        throw error;
-    }
-}
-
-async function getMessages(conversationId, timestamp) {
-    const proxyEndpoint = '/forward'; // Replace with the actual URL where your Go proxy is running
-    const payload = {
-        conversation_id: conversationId,
-        timestamp: timestamp
-    };
-
-    try {
-        const response = await fetch(proxyEndpoint, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'id_token': getCookie("id_token"),
-                'conversation_id': conversationId,
-                'timestamp': timestamp,
-            },
-        });
-        result = await response;
-        console.log(result)
-        return result;
-    } catch (error) {
-        console.error('Error calling Go intermediary:', error);
-        throw error;
-    }
-}
-
 
 // Helper function
 function getCookie(name) {

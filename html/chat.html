@@ -6,26 +6,18 @@
     <title>Chat</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.554.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js"></script>
-    <script src="/js/cognito.js"></script>
     <script src="/js/chat.js"></script>
     <link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
 <div id="navbar">
     <h3 id="username">Navigation</h3>
-    <script>getCurrentUser()</script>
     <!-- Add your navigation links here -->
     <button type="button" onclick="signOut()">Sign Out</button>
 </div>
 <div id="chat">
     <h4 id="recipient">John</h4>
-    <div id="messages">
-        <script>
-            const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
-            getMessages(users[0] + '-' + users[1], 0);
-            // document.getElementById('messages').textContent = messages;
-        </script>
-    </div>
+    <div id="messages"></div>
     <div id="input-container">
         <form id="input-form">
             <input type="text" id="text-input" placeholder="✍️">
@@ -36,13 +28,18 @@
     </div>
 </div>
 <script>
+    // Call refreshTokenIfNeeded every 5 minutes
+    setInterval(refreshTokenIfNeeded, 5 * 60 * 1000);
+    // Use the getMessages function
+
+
     document.getElementById('input-form').addEventListener('submit', async function (event) {
         event.preventDefault(); // prevent the form from submitting normally
 
         const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
         const message = document.getElementById('text-input').value;
         await sendMessage(users[0] + '-' + users[1], message);
-        document.getElementById('messages').textContent = await getMessages(users[0] + '-' + users[1], Date.now());
+        document.getElementById('messages').textContent = await getMessages(users[0] + '-' + users[1]);
     });
 </script>
 </body>
