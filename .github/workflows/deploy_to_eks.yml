@@ -13,7 +13,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
+        with:
+          repository: hndeau/SMessGO
+          ref: main
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
