@@ -36,3 +36,6 @@ jobs:
         run: |
           export KUBECONFIG=kubeconfig.yaml
           env
+          export KUBECONFIG=kubeconfig.yaml
+          envsubst < k8s-deployment.yaml > k8s-deployment.subst.yaml
+          kubectl apply -f k8s-deployment.subst.yaml
