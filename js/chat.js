@@ -133,7 +133,6 @@ function refreshSession() {
     }
 }
 
-
 async function getFetch(url) {
     try {
         const response = await fetch(url, {
