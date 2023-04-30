@@ -18,8 +18,9 @@ const userData = {
     Pool: userPool
 };
 
-var UN = "";
-let cognitoUser;
+var UN;
+let cognitoUser = getCognitoUser();
+let summaryList = [];
 getCurrentUser()
     .then(username => {
         UN = username;
@@ -29,8 +30,8 @@ getCurrentUser()
             let response_messages;
             try {
                 const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
-                response_messages = sortMessagesByTimestamp(await getMessages(users[0] + '-' + users[1]));
-                displayMessages(response_messages);
+                response_messages = sortMessages(await getMessages(users[0] + '-' + users[1]));
+                formatMessages(response_messages);
                 console.log(response_messages);
             } catch (error) {
                 console.error('Error:', error.message);
@@ -46,17 +47,144 @@ getCurrentUser()
                 console.error('Error:', error.message);
             }
         })();
+        addMessageElementListeners();
     })
     .catch(error => {
         console.error('Error getting user:', error);
+
     });
 
-async function getMessagesHelper() {
+function getToken(key) {
+    const token = localStorage.getItem(key);
+
+    if (token) {
+        return token;
+    }
+
+    return null;
+}
+
+function getCognitoUser() {
+    const username = localStorage.getItem('username');
+
+    if (username) {
+        const userData = {
+            Username: username,
+            Pool: userPool,
+        };
+        return new AmazonCognitoIdentity.CognitoUser(userData);
+    }
+
+    return null;
+}
+
+async function getCurrentUser() {
+    // Set up the parameters for the getUser API call
+    const params = {
+        AccessToken: getToken('accessToken')
+    };
+
+    // Create a new CognitoIdentityServiceProvider object
+    const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider();
+
+    return new Promise((resolve, reject) => {
+        // Call the getUser API with the session token
+        cognitoIdentityServiceProvider.getUser(params, (err, result) => {
+            if (err) {
+                console.log(err);
+                reject(err);
+            } else {
+                // Set the output element's text to the username
+                document.getElementById("username").textContent = result.Username;
+                resolve(result.Username);
+            }
+        });
+    });
+}
+
+function refreshSession() {
+    if (cognitoUser) {
+        cognitoUser.getSession((err, session) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+
+            if (session.isValid()) {
+                const refreshToken = session.getRefreshToken();
+
+                cognitoUser.refreshSession(refreshToken, (refreshErr, newSession) => {
+                    if (refreshErr) {
+                        console.error(refreshErr);
+                        return;
+                    }
+
+                    console.log('Session has been refreshed successfully');
+                    // Handle the new session, e.g., update your application state, make API calls, etc.
+                });
+            } else {
+                console.log('Session is not valid');
+                // Handle the invalid session, e.g., prompt the user to log in again.
+            }
+        });
+    } else {
+        console.log('No user is logged in');
+        // Handle the case when no user is logged in, e.g., redirect to the login page.
+    }
+}
+
+
+async function getFetch(url) {
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'id_token': getToken("idToken"),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        return response.text();
+    } catch (error) {
+        console.error('Failed to get messages:', error);
+        throw new Error('Failed to get messages');
+    }
+}
+
+async function postFetch(url, payload) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                'id_token': getToken("idToken"),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        return await response.text();
+    } catch (error) {
+        console.error('Failed to get messages:', error);
+        throw new Error('Failed to get messages');
+    }
+}
+
+async function messageinator() {
     let response_messages;
     try {
         const users = [document.getElementById('recipient').textContent, document.getElementById('username').textContent].sort();
-        response_messages = sortMessagesByTimestamp(await getMessages(users[0] + '-' + users[1]));
-        displayMessages(response_messages);
+        response_messages = sortMessages(await getMessages(users[0] + '-' + users[1]));
+        formatMessages(response_messages);
         console.log(response_messages);
     } catch (error) {
         console.error('Error:', error.message);
@@ -75,7 +203,7 @@ function decodeMessage(inputString) {
     return [message, username];
 }
 
-function displayMessages(messages) {
+function formatMessages(messages) {
     const messagesDiv = document.getElementById('messages');
     messagesDiv.innerHTML = ''; // Clear the existing messages
 
@@ -120,9 +248,10 @@ function displayMessages(messages) {
     // Move the scrollbar to the bottom
     var messagesContainer = document.getElementById('messages');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    addMessageElementListeners();
 }
 
-function sortMessagesByTimestamp(messageString) {
+function sortMessages(messageString) {
     const messagesArray = JSON.parse(messageString);
 
     messagesArray.sort((a, b) => {
@@ -179,131 +308,6 @@ function displayConversations(conversations) {
     });
 }
 
-function getCookie(name) {
-    const value = "; " + document.cookie;
-    const parts = value.split("; " + name + "=");
-    if (parts.length === 2) {
-        return parts.pop().split(";").shift();
-    }
-}
-
-function refreshTokenIfNeeded() {
-    getCurrentUser()
-        .then(username => {
-            UN = username;
-            userData.Username = username;
-            console.log('Username:', username);
-        })
-        .catch(error => {
-            console.error('Error getting user:', error);
-        });
-
-    // Check if the user is logged in
-    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-    if (!cognitoUser) {
-        console.log("User not logged in");
-        return;
-    }
-
-    // Get the access token
-    let accessToken = cognitoUser.getSignInUserSession().getAccessToken();
-
-    // Check if the access token has expired
-    if (accessToken && accessToken.getExpiration() * 1000 <= Date.now()) {
-        // Get the refresh token
-        let refreshToken = cognitoUser.getSignInUserSession().getRefreshToken();
-
-        // Refresh the access token
-        cognitoUser.refreshSession(refreshToken, (err, session) => {
-            if (err) {
-                console.log("Error refreshing the token", err);
-                return;
-            }
-
-            // Update the cookies with the new tokens
-            document.cookie = "access_token=" + session.getAccessToken().getJwtToken();
-            document.cookie = "id_token=" + session.getIdToken().getJwtToken();
-            document.cookie = "refresh_token=" + session.getRefreshToken().getToken();
-
-            console.log("Access token refreshed");
-        });
-    } else {
-        console.log("Access token still valid");
-    }
-}
-
-async function getCurrentUser() {
-    // Get the access token from cookies
-    const accessToken = getCookie('access_token');
-
-    // Set up the parameters for the getUser API call
-    const params = {
-        AccessToken: accessToken
-    };
-
-    // Create a new CognitoIdentityServiceProvider object
-    const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider();
-
-    return new Promise((resolve, reject) => {
-        // Call the getUser API with the session token
-        cognitoIdentityServiceProvider.getUser(params, (err, result) => {
-            if (err) {
-                console.log(err);
-                reject(err);
-            } else {
-                // Set the output element's text to the username
-                document.getElementById("username").textContent = result.Username;
-                resolve(result.Username);
-            }
-        });
-    });
-}
-
-async function getFetch(url) {
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-                'id_token': getCookie("id_token"),
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        return response.text();
-    } catch (error) {
-        console.error('Failed to get messages:', error);
-        throw new Error('Failed to get messages');
-    }
-}
-
-async function postFetch(url) {
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                'id_token': getCookie("id_token"),
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        return await response.text();
-    } catch (error) {
-        console.error('Failed to get messages:', error);
-        throw new Error('Failed to get messages');
-    }
-}
-
 async function getConversations() {
     if (!UN) {
         throw new Error('Missing UN!');
@@ -344,9 +348,24 @@ async function sendMessage(conversationId, message) {
 
     const url = 'https://58z24w81cl.execute-api.us-east-1.amazonaws.com/prod/sendMessage';
 
-    return await postFetch(url);
+    return await postFetch(url, payload);
 }
 
+
+// Add this function to handle the click event on message elements
+function messageElementClicked(event) {
+    const elementContent = event.target.textContent;
+    console.log('Message element content:', elementContent);
+    summaryList.push(elementContent);
+}
+
+// Add this function to add the click event listener to all message elements
+function addMessageElementListeners() {
+    const messageElements = document.querySelectorAll('#messages .message');
+    for (const element of messageElements) {
+        element.addEventListener('click', messageElementClicked);
+    }
+}
 
 function signOut() {
     // Delete user's cookies

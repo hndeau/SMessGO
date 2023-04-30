@@ -30,10 +30,15 @@ function signIn() {
     cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
     cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: function (result) {
-            // Save tokens as cookies
-            document.cookie = "access_token=" + result.getAccessToken().getJwtToken();
-            document.cookie = "id_token=" + result.getIdToken().getJwtToken();
-            document.cookie = "refresh_token=" + result.getRefreshToken().getToken();
+            // You can store the tokens and the CognitoUser object in your application state.
+            // For example, you can use the localStorage for a simple client-side storage solution.
+
+            // Store the tokens and the username in the local storage.
+            localStorage.setItem('accessToken', result.getAccessToken().getJwtToken());
+            localStorage.setItem('idToken', result.getIdToken().getJwtToken());
+            localStorage.setItem('refreshToken', result.getRefreshToken().getToken());
+            localStorage.setItem('username', cognitoUser.getUsername());
+            localStorage.setItem('cognitoUser', JSON.stringify(cognitoUser));
             // Redirect to /chat
             window.location.href = "/chat";
         },

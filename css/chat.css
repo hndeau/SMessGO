@@ -17,7 +17,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: calc(100vh - 40px);
+    height: 100vh;
 }
 
 button[type="button"] {
@@ -80,18 +80,6 @@ button[type="button"] {
     animation: gradient 5s ease infinite;
 }
 
-@keyframes gradient {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
 /* Add this to your CSS for the container element that wraps the messages */
 .message-container {
     display: flex;
@@ -121,6 +109,14 @@ button[type="button"] {
     max-width: 80%;
     word-wrap: break-word;
     font-size: 16px;
+    animation: fade-in 1s forwards;
+}
+
+#sign-out-btn {
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    margin-bottom: 10px;
 }
 
 #username {
@@ -158,6 +154,7 @@ button[type="button"] {
 #conversations {
     list-style-type: none;
     padding: 0;
+    animation: fade-in 1s forwards;
 }
 
 #conversations li {
@@ -174,4 +171,25 @@ button[type="button"] {
 
 #conversations li:hover {
     background-color: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
