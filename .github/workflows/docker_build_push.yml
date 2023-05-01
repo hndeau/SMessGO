@@ -32,4 +32,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/hndeau/smess:latest
+          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/hnadeau/smess:latest
